@@ -1,0 +1,11 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.1613937609/C_INCLUDE_PATH/delimiter=;
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.1613937609/C_INCLUDE_PATH/operation=append
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.1613937609/C_INCLUDE_PATH/value=F\:\\git-manager\\My-git\\16_32LED\\Project\\ESP8266_16_32\\app\\include\\driver
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.1613937609/append=true
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.1613937609/appendContributed=true
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.2009350350/C_INCLUDE_PATH/delimiter=;
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.2009350350/C_INCLUDE_PATH/operation=append
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.2009350350/C_INCLUDE_PATH/value=F\:\\hardware\\ESP8266\\StudyInEsp8266\\5_PWM_LED\\app\\include\\driver
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.2009350350/append=true
+environment/project/cdt.managedbuild.toolchain.gnu.cygwin.base.2009350350/appendContributed=true

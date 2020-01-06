@@ -38,6 +38,7 @@ void writebyte(char data);
 void max7219_write(char address,char date);
 void max7219_write_cascade(unsigned char pcs, char address,char date);
 void max7219_setval(unsigned char pcs, unsigned char val);
+void max7219_setpox(unsigned char pcs, unsigned char iline, unsigned char row);
 void max7219_setBrightness(unsigned char val);
 void max7219_clear(void);
 

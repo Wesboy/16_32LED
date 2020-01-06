@@ -76,9 +76,9 @@ void ICACHE_FLASH_ATTR max7219_write_cascade(unsigned char pcs, char address,cha
 	writebyte(address);
 	writebyte(date);
 
+	CLK_SET(HIGH);
 	for(i = 1; i < pcs; i++)
 	{
-		CLK_SET(HIGH);
 		writebyte(0);
 		writebyte(0);
 	}
@@ -119,6 +119,11 @@ void ICACHE_FLASH_ATTR max7219_setval(unsigned char pcs, unsigned char val){
 	for(i=0;i<8;i++){
 		max7219_write_cascade(pcs, i+1,val);
 	}
+}
+
+void ICACHE_FLASH_ATTR max7219_setpox(unsigned char pcs, unsigned char iline, unsigned char row){
+	unsigned char val = 0x01 << row;
+	max7219_write_cascade(pcs, iline+1, val);
 }
 
 void ICACHE_FLASH_ATTR max7219_setBrightness(unsigned char val){

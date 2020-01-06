@@ -113,11 +113,56 @@ void ICACHE_FLASH_ATTR max7219_full(void){
 	}
 }
 
+void ICACHE_FLASH_ATTR max7219_line0_8(char address,uint32_t date)
+{
+	CS_SET(LOW);
+	writebyte(address);
+	writebyte(date&0xFF);
+	writebyte(address);
+	writebyte((date>>8)&0xFF);
+	writebyte(address);
+	writebyte((date>>16)&0xFF);
+	writebyte(address);
+	writebyte((date>>24)&0xFF);
+	CS_SET(HIGH);
+}
+void ICACHE_FLASH_ATTR max7219_line16_32(char address,uint32_t date)
+{
+	CS_SET(LOW);
+	writebyte(address);
+	writebyte(date&0xFF);
+	writebyte(address);
+	writebyte((date>>8)&0xFF);
+	writebyte(address);
+	writebyte((date>>16)&0xFF);
+	writebyte(address);
+	writebyte((date>>24)&0xFF);
 
-void ICACHE_FLASH_ATTR max7219_setval(unsigned char pcs, unsigned char val){
+	writebyte(0x00);
+	writebyte(0x00);
+	writebyte(0x00);
+	writebyte(0x00);
+	writebyte(0x00);
+	writebyte(0x00);
+	writebyte(0x00);
+	writebyte(0x00);
+	CS_SET(HIGH);
+}
+
+
+void ICACHE_FLASH_ATTR max7219_16_32_scan(char iLine, unsigned int val){
 	char i;
-	for(i=0;i<8;i++){
-		max7219_write_cascade(pcs, i+1,val);
+	unsigned char len = 4;
+
+	if(iLine <= 8)//for(iLine = 1; iLine <= 8; iLine++)
+	{
+		max7219_line0_8(iLine, val);
+
+	}
+	else if(iLine <= 16)//for(iLine = 1; iLine <= 8; iLine++)
+	{
+		max7219_line16_32(iLine%8, val);
+
 	}
 }
 

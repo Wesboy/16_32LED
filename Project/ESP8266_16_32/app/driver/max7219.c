@@ -102,14 +102,14 @@ void ICACHE_FLASH_ATTR max7219_clear(void){
 void ICACHE_FLASH_ATTR max7219_full(void){
 	char i;
 	for(i=0;i<8;i++){
-		max7219_write_cascade(1, i+1,0xff);
-		max7219_write_cascade(2, i+1,0xff);
-		max7219_write_cascade(3, i+1,0xff);
-		max7219_write_cascade(4, i+1,0xff);
-		max7219_write_cascade(5, i+1,0xff);
-		max7219_write_cascade(6, i+1,0xff);
-		max7219_write_cascade(7, i+1,0xff);
-		max7219_write_cascade(8, i+1,0xff);
+		max7219_write_cascade(1, i+1, 0xFF);
+		max7219_write_cascade(2, i+1, 0xFF);
+		max7219_write_cascade(3, i+1, 0xFF);
+		max7219_write_cascade(4, i+1, 0xFF);
+		max7219_write_cascade(5, i+1, 0xFF);
+		max7219_write_cascade(6, i+1, 0xFF);
+		max7219_write_cascade(7, i+1, 0xFF);
+		max7219_write_cascade(8, i+1, 0xFF);
 	}
 }
 
@@ -154,22 +154,21 @@ void ICACHE_FLASH_ATTR max7219_16_32_scan(char iLine, unsigned int val){
 	char i;
 	unsigned char len = 4;
 
-	if(iLine <= 8)//for(iLine = 1; iLine <= 8; iLine++)
+	if(iLine <= 8)
 	{
 		max7219_line0_8(iLine, val);
 
 	}
-	else if(iLine <= 16)//for(iLine = 1; iLine <= 8; iLine++)
+	else if(iLine < 16)
 	{
 		max7219_line16_32(iLine%8, val);
-
+	}
+	else if(iLine == 16)
+	{
+		max7219_line16_32(8, val);
 	}
 }
 
-void ICACHE_FLASH_ATTR max7219_setpox(unsigned char pcs, unsigned char iline, unsigned char row){
-	unsigned char val = 0x01 << row;
-	max7219_write_cascade(pcs, iline+1, val);
-}
 
 void ICACHE_FLASH_ATTR max7219_setBrightness(unsigned char val){
 	char i;

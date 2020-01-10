@@ -12,8 +12,8 @@ void user_init()
 {
 	display_init();
 	os_timer_disarm(&timer);
-	os_timer_setfn(&timer,display_pro,NULL);
-	os_timer_arm(&timer,500,1);
+	os_timer_setfn(&timer,display_time_pro,NULL);
+	os_timer_arm(&timer,1000,1);
 
 }
 void user_rf_pre_init()

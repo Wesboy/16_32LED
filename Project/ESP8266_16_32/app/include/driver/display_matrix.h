@@ -13,5 +13,6 @@
 
 void display_init(void);
 void display_pro(void *arg);
+void display_time_pro(void *arg);
 
 #endif /* APP_INCLUDE_DRIVER_DISPLAY_MATRIX_H_ */

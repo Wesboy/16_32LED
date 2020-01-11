@@ -131,45 +131,19 @@ void time_display(uint8_t iLine, uint32_t *val)
 	}
 }
 
-void ICACHE_FLASH_ATTR display_pro(void *arg)
-{
-	static uint8_t i = 4;
-	static uint32_t val = 0x80000000;
-	static uint32_t val_tmp = 0;
-	static uint8_t offset = 0;
-	max7219_clear();
-	val = 0;
-
-	for(i = 0; i < 16; i++)
-	{
-		uint8_to_uin32_t(i, &val);
-		val_tmp = val << (32-offset);
-		val >>= offset;
-		val |= val_tmp;
-		max7219_16_32_scan(i+1, val);
-	}
-	if(offset < 32)
-		offset++;
-	else
-		offset = 0;
-
-	os_printf("display type%x \r\n", val);
-
-}
-
-
 void ICACHE_FLASH_ATTR display_time_pro(void *arg)
 {
 	static uint8_t i = 4;
 		static uint32_t val;
-		max7219_clear();
+		static uint32_t val1;
+		//max7219_clear();
 		time_caculate();
-		val = 0;
+		val1 = 0;
 
-		for(i = 0; i < 16; i++)
+		for(i = 0; i < 8; i++)
 		{
 			time_display(i, &val);
-			max7219_16_32_scan(i+1, val);
+			set_max7219_data(i+1, val, val1);
 		}
 
 		os_printf("display time type%x \r\n", val);

@@ -14,11 +14,6 @@ void ICACHE_FLASH_ATTR max7219_init(void){
     GPIO_OUTPUT_SET(GPIO_ID_PIN(CLK_Pin_NUM), HIGH);
 	os_printf("CLK init success~~\n");
 
-	//max7219_write(0x09,0x00);	//解码寄存器（地址:0x09,写0x00时，选ND，解码7~0数码管）
-    //max7219_write(0x0a,0x01);	//亮度寄存器
-    //max7219_write(0x0b,0x07);	//扫描寄存器（0x0_，_等于显示数码管的个数）
-    //max7219_write(0x0c,0x01);	//省电寄存器（写0x00进入掉电模式，写0x01进入正常模式）
-    //max7219_write(0x0f,0x00); 	//测试寄存器（写0x01进入测试模式，写0x00进入正常模式）
 	uint8_t i;
 
 	for(i = 0; i < 8; i++)
@@ -113,60 +108,27 @@ void ICACHE_FLASH_ATTR max7219_full(void){
 	}
 }
 
-void ICACHE_FLASH_ATTR max7219_line0_8(char address,uint32_t date)
+void ICACHE_FLASH_ATTR set_max7219_data(char line,uint32_t data0, uint32_t data1)
 {
 	CS_SET(LOW);
-	writebyte(address);
-	writebyte(date&0xFF);
-	writebyte(address);
-	writebyte((date>>8)&0xFF);
-	writebyte(address);
-	writebyte((date>>16)&0xFF);
-	writebyte(address);
-	writebyte((date>>24)&0xFF);
+	writebyte(line);
+	writebyte(data1&0xFF);
+	writebyte(line);
+	writebyte((data1>>8)&0xFF);
+	writebyte(line);
+	writebyte((data1>>16)&0xFF);
+	writebyte(line);
+	writebyte((data1>>24)&0xFF);
+
+	writebyte(line);
+	writebyte(data0&0xFF);
+	writebyte(line);
+	writebyte((data0>>8)&0xFF);
+	writebyte(line);
+	writebyte((data0>>16)&0xFF);
+	writebyte(line);
+	writebyte((data0>>24)&0xFF);
 	CS_SET(HIGH);
-}
-void ICACHE_FLASH_ATTR max7219_line16_32(char address,uint32_t date)
-{
-	CS_SET(LOW);
-	writebyte(address);
-	writebyte(date&0xFF);
-	writebyte(address);
-	writebyte((date>>8)&0xFF);
-	writebyte(address);
-	writebyte((date>>16)&0xFF);
-	writebyte(address);
-	writebyte((date>>24)&0xFF);
-
-	writebyte(0x00);
-	writebyte(0x00);
-	writebyte(0x00);
-	writebyte(0x00);
-	writebyte(0x00);
-	writebyte(0x00);
-	writebyte(0x00);
-	writebyte(0x00);
-	CS_SET(HIGH);
-}
-
-
-void ICACHE_FLASH_ATTR max7219_16_32_scan(char iLine, unsigned int val){
-	char i;
-	unsigned char len = 4;
-
-	if(iLine <= 8)
-	{
-		max7219_line0_8(iLine, val);
-
-	}
-	else if(iLine < 16)
-	{
-		max7219_line16_32(iLine%8, val);
-	}
-	else if(iLine == 16)
-	{
-		max7219_line16_32(8, val);
-	}
 }
 
 

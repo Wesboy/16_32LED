@@ -37,8 +37,7 @@ void CLK_SET(uint8 status);
 void writebyte(char data);
 void max7219_write(char address,char date);
 void max7219_write_cascade(unsigned char pcs, char address,char date);
-void max7219_16_32_scan(char iLine, unsigned int val);
-void max7219_setpox(unsigned char pcs, unsigned char iline, unsigned char row);
+void set_max7219_data(char line,uint32_t data0, uint32_t data1);
 void max7219_setBrightness(unsigned char val);
 void max7219_clear(void);
 

@@ -1,11 +1,17 @@
-#include "display_matrix.h"
+#include <display_matrix.h>
 #include "fontcode.h"
+#include "myTime.h"
 
+MT *pNetTime;
 
 typedef struct mTime{
 	uint8_t second;
 	uint8_t minute;
 	uint8_t hour;
+	uint8_t year_h;
+	uint8_t year_l;
+	uint8_t month;
+	uint8_t day;
 }M_Time;
 
 M_Time gTime;
@@ -46,33 +52,48 @@ void ICACHE_FLASH_ATTR display_init(void)
 	gTime.second = 0;
 	gTime.minute = 0;
 	gTime.hour = 0;
+	pNetTime = GetTime();
 }
 
 void time_caculate(void)
 {
-	if(gTime.second >= 59)
+	if(pNetTime->bFind == 1)
 	{
-		gTime.second = 0;
-		if(gTime.minute >= 59)
+		pNetTime->bFind = 0;
+		gTime.year_h = pNetTime->year_h;
+		gTime.year_l = pNetTime->year_l;
+		gTime.month = pNetTime->month;
+		gTime.day = pNetTime->day;
+		gTime.second = pNetTime->second;
+		gTime.minute = pNetTime->minute;
+		gTime.hour = pNetTime->hour;
+	}
+	else
+	{
+		if(gTime.second >= 59)
 		{
-			gTime.minute = 0;
-			if(gTime.hour >= 24)
+			gTime.second = 0;
+			if(gTime.minute >= 59)
 			{
-				gTime.hour = 0;
+				gTime.minute = 0;
+				if(gTime.hour >= 24)
+				{
+					gTime.hour = 0;
+				}
+				else
+				{
+					gTime.hour++;
+				}
 			}
 			else
 			{
-				gTime.hour++;
+				gTime.minute++;
 			}
 		}
 		else
 		{
-			gTime.minute++;
+			gTime.second++;
 		}
-	}
-	else
-	{
-		gTime.second++;
 	}
 }
 
@@ -109,25 +130,36 @@ void uint8_to_uin32_t(uint8_t iLine, uint32_t *val)
 
 void time_display(uint8_t iLine, uint32_t *val)
 {
-	if(iLine < 8)
+	*val = 0;
+
+	*val = Matrix_5_7_Num[gTime.hour/10][iLine] << 27;
+	*val |= (Matrix_5_7_Num[gTime.hour%10][iLine] << 22);
+	*val |= (Matrix_5_7_Num[gTime.minute/10][iLine] << 14);
+	*val |= (Matrix_5_7_Num[gTime.minute%10][iLine] << 9);
+	if(iLine > 2)
 	{
-		*val = Matrix_5_7_Num[gTime.hour/10][iLine] << 27;
-		*val |= 0xFF00000&(Matrix_5_7_Num[gTime.hour%10][iLine] << 22);
-		*val |= 0xFF000&(Matrix_5_7_Num[gTime.minute/10][iLine] << 13);
-		*val |= 0xF00&(Matrix_5_7_Num[gTime.minute%10][iLine] << 8);
-		if(iLine > 2)
-		{
-			*val |= Matrix_3_5_Num[gTime.second/10][iLine-3] << 4;
-			*val |= Matrix_3_5_Num[gTime.second%10][iLine-3]&0xF;
-		}
-		if(iLine == 2 || iLine == 3 || iLine == 5 || iLine == 6)
-		{
-			*val |= 0x80000;
-		}
+		*val |= Matrix_3_5_Num[gTime.second/10][iLine-3] << 5;
+		*val |= Matrix_3_5_Num[gTime.second%10][iLine-3] << 1;
 	}
-	else
+	if(iLine == 2 || iLine == 3 || iLine == 5 || iLine == 6)
 	{
-		*val = 0;
+		*val |= 0x180000;
+	}
+}
+
+void date_caculte(uint8_t iLine, uint32_t *val)
+{
+	*val = 0;
+	if(iLine > 1 && iLine < 7)
+	{
+		*val = Matrix_3_5_Num[gTime.year_h/10][iLine-2] << 28;
+		*val |= (Matrix_3_5_Num[gTime.year_h%10][iLine-2] << 24);
+		*val |= (Matrix_3_5_Num[gTime.year_l/10][iLine-2] << 20);
+		*val |= (Matrix_3_5_Num[gTime.year_l%10][iLine-2] << 16);
+		*val |= (Matrix_3_5_Num[gTime.month/10][iLine-2] << 12);
+		*val |= (Matrix_3_5_Num[gTime.month%10][iLine-2] << 8);
+		*val |= (Matrix_3_5_Num[gTime.day/10][iLine-2] << 4);
+		*val |= (Matrix_3_5_Num[gTime.day%10][iLine-2] << 0);
 	}
 }
 
@@ -136,16 +168,15 @@ void ICACHE_FLASH_ATTR display_time_pro(void *arg)
 	static uint8_t i = 4;
 		static uint32_t val;
 		static uint32_t val1;
-		//max7219_clear();
 		time_caculate();
-		val1 = 0;
 
 		for(i = 0; i < 8; i++)
 		{
 			time_display(i, &val);
+			date_caculte(i, &val1);
 			set_max7219_data(i+1, val, val1);
 		}
 
-		os_printf("display time type%x \r\n", val);
+		os_printf("display time %d%d-%d-%d %d:%d:%d \r\n", gTime.year_h, gTime.year_l, gTime.month, gTime.day, gTime.hour, gTime.minute, gTime.second);
 
 }

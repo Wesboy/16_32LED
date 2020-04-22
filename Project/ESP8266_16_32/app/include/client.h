@@ -23,5 +23,6 @@ void user_tcp_recon_cb(void *arg, sint8 err);
 void user_tcp_connect_cb(void *arg);
 void my_station_init(struct ip_addr *remote_ip, struct ip_addr *local_ip, int remote_port);
 
+void my_station_pro(void);
 
 #endif /* APP_INCLUDE_CLIENT_H_ */

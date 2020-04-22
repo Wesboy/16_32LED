@@ -76,7 +76,7 @@ void time_caculate(void)
 			if(gTime.minute >= 59)
 			{
 				gTime.minute = 0;
-				if(gTime.hour >= 24)
+				if(gTime.hour >= 23)
 				{
 					gTime.hour = 0;
 				}

@@ -1,6 +1,6 @@
 
 #include <display_matrix.h>
-#include "driver/uart.h"  //串口0需要的头文件
+#include "uart.h"  //串口0需要的头文件
 #include "osapi.h"  //串口1需要的头文件
 #include "user_main.h" //WIFI连接需要的头文件
 #include "gpio.h"  //端口控制需要的头文件
@@ -37,8 +37,8 @@ void user_init()
 
 	wifi_set_opmode(0x01); //设置为STATION模式
 	struct station_config stationConf;
-	os_strcpy(stationConf.ssid, "chen159");	  //改成你自己的   路由器的用户名
-	os_strcpy(stationConf.password, "134802..chun"); //改成你自己的   路由器的密码
+	os_strcpy(stationConf.ssid, "FLY-DDNETWORK_guest");	  //改成你自己的   路由器的用户名
+	os_strcpy(stationConf.password, "flyaudio"); //改成你自己的   路由器的密码
 	wifi_station_set_config(&stationConf); //设置WiFi station接口配置，并保存到 flash
 	wifi_station_connect(); //连接路由器
 

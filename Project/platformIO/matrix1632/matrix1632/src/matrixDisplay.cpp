@@ -13,12 +13,7 @@ unsigned short helpArrPos[anzMAX * 8];
 void matrixDisplayInit(void)
 {
     unsigned short temp; 
-    Serial.print("display init: ");
     showFrameBuff = (unsigned short (*)[8])max7219_init(&len);
-    Serial.print(len);
-    if(showFrameBuff)
-        Serial.println("display buff: ok");
-
 
     for(int i = 0; i < 8; i++)
     {
@@ -162,3 +157,23 @@ void char22Arr(unsigned short ch, int PosX, short PosY)
         }
     }
 }
+
+
+
+//**************************************************************************************************
+void showText(char *ch, unsigned int size, int startPosX, short startPosY)
+{        
+    int i = 0;
+    if(size > 0)
+    {
+        for(i = 0; i < size; i++)
+        {
+            if((startPosX - i*6) > 0)
+                char2Arr(ch[i] , startPosX - i*6, startPosY);
+            else
+                break;
+        }
+    }
+}
+//**************************************************************************************************
+

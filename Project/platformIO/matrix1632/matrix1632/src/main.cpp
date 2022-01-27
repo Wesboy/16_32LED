@@ -45,10 +45,13 @@ char M_arr[12][5] = {{' ', 'J', 'A', 'N', ' '}, {' ', 'F', 'E', 'B', ' '}, {' ',
 char WT_arr[7][4] = {{'S', 'U', 'N', ' '}, {'M', 'O', 'N', ' '}, {'T', 'U', 'E', ' '}, {'W', 'E', 'D', ' '}, {'T', 'H', 'U', ' '}, {'F', 'R', 'I', ' '}, {'S', 'A', 'T', ' '}};
 
 
-void char2Arr(unsigned short ch, int PosX, short PosY);
-void char22Arr(unsigned short ch, int PosX, short PosY);
-void clear_Display(); //clear all
-void updatedisplay();
+
+char tWifiTip[] = "WiFi";
+char tWifiReadyTip[] = "Ready";
+char tOKTip[] = "OK!!";
+char tErrTip[] = "Err!!";
+char tRTCTip[] = "RTC!";
+
 //**************************************************************************************************
 
 bool autoConfig()
@@ -56,31 +59,23 @@ bool autoConfig()
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, pass); // 默认连接保存的WIFI
 
+
+    clear_Display();
+    showText(tWifiTip, strlen(tWifiTip), 57, 0);
+    showText(tWifiReadyTip, strlen(tWifiReadyTip), 29, 0);
+    updatedisplay();
+
     for (int i = 0; i < 15; i++)
     {
-        char2Arr('W', 28 + 32, 0);
-        char2Arr('i', 22 + 32, 0);
-        char2Arr('-', 18 + 32, 0);
-        char2Arr('F', 12 + 32, 0);
-        char2Arr('i', 6 + 32, 0);
-
-        char2Arr('c', 28, 0);
-        char2Arr('o', 22, 0);
-        char2Arr('n', 16, 0);
-        char2Arr('n', 10, 0);
-
-        updatedisplay();
 
         if (WiFi.status() == WL_CONNECTED)
         {
             Serial.println("AutoConfig Success");
             Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
             Serial.printf("PSW:%s\r\n", WiFi.psk().c_str());
+
             clear_Display();
-            char2Arr('O', 25, 0);
-            char2Arr('K', 19, 0);
-            char2Arr('!', 12, 0);
-            char2Arr('!', 6, 0);
+            showText(tOKTip, strlen(tOKTip), 25, 0);
             updatedisplay();
 
             Serial.println("WiFi connected");
@@ -93,16 +88,21 @@ bool autoConfig()
         }
         else
         {
-            Serial.print("AutoConfig Waiting......");
-            Serial.println(WiFi.status());
             delay(1000);
+            Serial.print("AutoConfig Waiting......");
+            Serial.print(digitalRead(0));
+            Serial.println(WiFi.status());
+            if(digitalRead(0) == 0)
+            {
+                clear_Display();
+                showText(tRTCTip, strlen(tRTCTip), 25, 0);
+                updatedisplay();
+                return true;
+            }
         }
     }
     clear_Display();
-    char2Arr('E', 25, 0);
-    char2Arr('r', 19, 0);
-    char2Arr('r', 12, 0);
-    char2Arr('!', 6, 0);
+    showText(tErrTip, strlen(tErrTip), 25, 0);
     updatedisplay();
     delay(1000);
     Serial.println("AutoConfig Faild!");
@@ -122,10 +122,7 @@ void smartConfig()
         if (WiFi.smartConfigDone())
         {
             clear_Display();
-            char2Arr('O', 25, 0);
-            char2Arr('K', 19, 0);
-            char2Arr('!', 12, 0);
-            char2Arr('!', 6, 0);
+            showText(tOKTip, strlen(tOKTip), 25, 0);
             updatedisplay();
             Serial.println("SmartConfig Success");
             Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
@@ -142,22 +139,21 @@ void smartConfig()
             ESP.restart();
             break;
         }
+        if(digitalRead(0) == 0)
+        {
+            i = 20;
+        }
         clear_Display();
-        char2Arr('S', 29, 0);
-        char2Arr('-', 23, -1);
-        char2Arr('c', 17, 0);
-        char2Arr('o', 12, 0);
-        char2Arr('n', 6, 0);
+        showText("S", 1, 29, 0);
+        showText("-", 1, 23, -1);
+        showText("con", 3, 17, 0);
         updatedisplay();
         delay(1000);
     }
     if (i > 18)
     {
         clear_Display();
-        char2Arr('R', 25, 0);
-        char2Arr('T', 19, 0);
-        char2Arr('C', 12, 0);
-        char2Arr('!', 6, 0);
+        showText(tRTCTip, strlen(tRTCTip), 25, 0);
         updatedisplay();
         delay(1000);
         Serial.println("SmartConfig Faild!");
@@ -242,6 +238,7 @@ void setup()
     rtc_init();
     clear_Display();
     tckr.attach(0.05, timer50ms); // every 50 msec
+    pinMode(0, INPUT);
     //////////////////////////////////
     if (!autoConfig())
     {
@@ -277,9 +274,7 @@ void loop()
 
     z_PosX = MAXPOSX;
     d_PosX = MAXPOSX;
-    //  x=0; x1=0; x2=0;
 
-    updatedisplay();
     updown = true;
     if (updown == false)
     {

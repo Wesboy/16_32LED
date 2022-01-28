@@ -177,3 +177,22 @@ void showText(char *ch, unsigned int size, int startPosX, short startPosY)
 }
 //**************************************************************************************************
 
+
+//**************************************************************************************************
+void ScorllShowDate(char *text, unsigned int size, int startPosX, int endPosX)
+{        
+    int i = 0;
+    int curPos = startPosX - i*4;
+    if(size > 0)
+    {
+        for(i = 0; i < size; i++)
+        {
+            curPos = startPosX - i*4;
+            if(curPos > 0 && (curPos <= 32))
+                char22Arr(text[i] , curPos, 0);
+            else
+                break;
+        }
+    }
+}
+//**************************************************************************************************

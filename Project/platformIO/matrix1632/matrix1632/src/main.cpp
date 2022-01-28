@@ -20,8 +20,24 @@ some show interface
 // char ssid[] = "YOUGU";                    // your network SSID (name)
 // char pass[] = "ygzhldcdz";                    // your network password
 
+#define AUTOCONNECTCOUNT 15     //自动连接时间
+#define SMARTCONNECTCOUNT 20    //smart连接时间
+
+
+enum eMode{
+    InitMode,
+    AutoConnMode,
+    SmartConnMode,
+    WiFiConnecdMode,
+    TimeMode,
+    MaxMode,
+};
+
+
 char ssid[] = "Kkkk";     // your network SSID (name)
 char pass[] = "88888888"; // your network password
+static bool bConnectNoWait = false;
+static eMode mWorkMode = InitMode;             //
 
 unsigned int z_PosX = 0;
 unsigned int d_PosX = 0;
@@ -36,6 +52,7 @@ IPAddress timeServerIP;
 
 // The object for the Ticker
 Ticker tckr;
+Ticker tckr2;
 // A UDP instance to let us send and receive packets over UDP
 WiFiUDP udp;
 
@@ -44,120 +61,141 @@ char M_arr[12][5] = {{' ', 'J', 'A', 'N', ' '}, {' ', 'F', 'E', 'B', ' '}, {' ',
 //days
 char WT_arr[7][4] = {{'S', 'U', 'N', ' '}, {'M', 'O', 'N', ' '}, {'T', 'U', 'E', ' '}, {'W', 'E', 'D', ' '}, {'T', 'H', 'U', ' '}, {'F', 'R', 'I', ' '}, {'S', 'A', 'T', ' '}};
 
-
-
 char tWifiTip[] = "WiFi";
 char tWifiReadyTip[] = "Ready";
 char tOKTip[] = "OK!!";
 char tErrTip[] = "Err!!";
 char tRTCTip[] = "RTC!";
 
+
+struct tm mPerviousTime;
+struct tm mPresentTime;
+
+
 //**************************************************************************************************
-
-bool autoConfig()
+  
+void autoConfig(void)
 {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, pass); // 默认连接保存的WIFI
+    static unsigned int iAutoConnectCount = AUTOCONNECTCOUNT;
 
-
-    clear_Display();
-    showText(tWifiTip, strlen(tWifiTip), 57, 0);
-    showText(tWifiReadyTip, strlen(tWifiReadyTip), 29, 0);
-    updatedisplay();
-
-    for (int i = 0; i < 15; i++)
+    switch (WiFi.status())
     {
-
-        if (WiFi.status() == WL_CONNECTED)
+    case WL_DISCONNECTED:
+        /* code */
+        if(bConnectNoWait)
         {
-            Serial.println("AutoConfig Success");
-            Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
-            Serial.printf("PSW:%s\r\n", WiFi.psk().c_str());
-
-            clear_Display();
-            showText(tOKTip, strlen(tOKTip), 25, 0);
-            updatedisplay();
-
-            Serial.println("WiFi connected");
-            Serial.println(WiFi.localIP());
-            Serial.println("Starting UDP");
-            udp.begin(localPort);
-            Serial.print("Local port: ");
-            Serial.println(udp.localPort());
-            return true;
-        }
-        else
-        {
-            delay(1000);
+            bConnectNoWait = false;
             Serial.print("AutoConfig Waiting......");
-            Serial.print(digitalRead(0));
             Serial.println(WiFi.status());
-            if(digitalRead(0) == 0)
+
+            if(iAutoConnectCount > 0)
             {
+                if(iAutoConnectCount == 1) //最后一次显示failed
+                {
+                    clear_Display();
+                    showText(tErrTip, strlen(tErrTip), 25, 0);
+                    updatedisplay();
+                    Serial.println("AutoConfig Faild!");
+                }
+                iAutoConnectCount--;
+            }
+            else
+            {
+                iAutoConnectCount = AUTOCONNECTCOUNT;
+                mWorkMode = SmartConnMode;  //连接失败，进入smartConn
+                Serial.println("\r\nWait for Smartconfig");
+                WiFi.beginSmartConfig();
+
                 clear_Display();
-                showText(tRTCTip, strlen(tRTCTip), 25, 0);
+                showText("S", 1, 29, 0);
+                showText("-", 1, 23, -1);
+                showText("con", 3, 17, 0);
                 updatedisplay();
-                return true;
             }
         }
-    }
-    clear_Display();
-    showText(tErrTip, strlen(tErrTip), 25, 0);
-    updatedisplay();
-    delay(1000);
-    Serial.println("AutoConfig Faild!");
-    return false;
-}
-//**************************************************************************************************
-void smartConfig()
-{
-    int i = 0;
+        break;
+    case WL_NO_SSID_AVAIL:
+        //找不到SSID
+        iAutoConnectCount = AUTOCONNECTCOUNT;
+        mWorkMode = SmartConnMode;  //连接失败，进入smartConn
+        Serial.println("\r\nWait for Smartconfig");
+        WiFi.beginSmartConfig();
 
-    WiFi.mode(WIFI_STA);
-    Serial.println("\r\nWait for Smartconfig");
-    WiFi.beginSmartConfig();
-    for (i = 0; i < 20; i++)
-    {
-        Serial.print(".");
-        if (WiFi.smartConfigDone())
-        {
-            clear_Display();
-            showText(tOKTip, strlen(tOKTip), 25, 0);
-            updatedisplay();
-            Serial.println("SmartConfig Success");
-            Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
-            Serial.printf("PSW:%s\r\n", WiFi.psk().c_str());
-            WiFi.setAutoConnect(true); // 设置自动连接
-
-            Serial.println("WiFi connected");
-            Serial.println(WiFi.localIP());
-            Serial.println("Starting UDP");
-            udp.begin(localPort);
-            Serial.print("Local port: ");
-            Serial.println(udp.localPort());
-            delay(1000);
-            ESP.restart();
-            break;
-        }
-        if(digitalRead(0) == 0)
-        {
-            i = 20;
-        }
         clear_Display();
         showText("S", 1, 29, 0);
         showText("-", 1, 23, -1);
         showText("con", 3, 17, 0);
         updatedisplay();
-        delay(1000);
-    }
-    if (i > 18)
-    {
+        break;
+    case WL_CONNECTED:
+        mWorkMode = WiFiConnecdMode;
+        Serial.println("AutoConfig Success");
+        Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
+        Serial.printf("PSW:%s\r\n", WiFi.psk().c_str());
+
         clear_Display();
-        showText(tRTCTip, strlen(tRTCTip), 25, 0);
+        showText(tWifiTip, strlen(tWifiTip), 57, 0);
+        showText(tOKTip, strlen(tOKTip), 25, 0);
         updatedisplay();
-        delay(1000);
-        Serial.println("SmartConfig Faild!");
-        Serial.println("Clock use RTC!");
+
+        Serial.println("WiFi connected");
+        Serial.println(WiFi.localIP());
+        Serial.println("Starting UDP");
+        udp.begin(localPort);
+        Serial.print("Local port: ");
+        Serial.println(udp.localPort());
+        break;
+    
+    default:
+    
+        if(bConnectNoWait)
+        {
+            bConnectNoWait = false;
+            Serial.print("AutoConfig status change...");
+            Serial.println(WiFi.status());
+        }
+        break;
+    }
+}
+//**************************************************************************************************
+void smartConfig(void)
+{
+    int i = 0;
+    static unsigned int iSmartConnectCount = SMARTCONNECTCOUNT;
+
+    if(bConnectNoWait)      //1s
+    {
+        bConnectNoWait = false;
+        if(iSmartConnectCount > 2)
+        {
+            if (WiFi.smartConfigDone())
+            {
+                clear_Display();
+                showText(tOKTip, strlen(tOKTip), 25, 0);
+                updatedisplay();
+                Serial.println("SmartConfig Success");
+                Serial.printf("SSID:%s\r\n", WiFi.SSID().c_str());
+                Serial.printf("PSW:%s\r\n", WiFi.psk().c_str());
+                WiFi.setAutoConnect(true); // 设置自动连接
+
+                Serial.println("WiFi connected");
+                Serial.println(WiFi.localIP());
+                Serial.println("Starting UDP");
+                udp.begin(localPort);
+                Serial.print("Local port: ");
+                Serial.println(udp.localPort());
+                iSmartConnectCount = SMARTCONNECTCOUNT;
+                mWorkMode = WiFiConnecdMode;
+                ESP.restart();
+            }
+            iSmartConnectCount--;
+        }
+        else if(iSmartConnectCount > 0)
+        {
+            mWorkMode = TimeMode;
+            Serial.println("SmartConfig Faild!");
+            Serial.println("Clock use RTC!");
+        }
     }
 }
 //**************************************************************************************************
@@ -215,15 +253,81 @@ tm *connectNTP()
 //**************************************************************************************************
 void timer50ms()
 {
-    static unsigned int cnt50ms = 0;
+    // static unsigned int cnt50ms = 0;
     f_tckr50ms = true;
-    cnt50ms++;
-    if (cnt50ms == 20)
+    // cnt50ms++;
+    // if (cnt50ms == 20)
+    // {
+    //     f_tckr1s = true; // 1 sec
+    //     cnt50ms = 0;
+    // }
+}
+
+void TimeUpdate()
+{
+    Serial.print("tick 1s mode:");
+    Serial.println(mWorkMode);
+    f_tckr1s = true; // 1 sec
+
+    switch (mWorkMode)
     {
-        f_tckr1s = true; // 1 sec
-        cnt50ms = 0;
+    case AutoConnMode:
+        bConnectNoWait = true;
+        break;
+    case SmartConnMode:
+        bConnectNoWait = true;
+        break;
+    
+    default:
+        break;
+    }
+
+}
+
+
+ICACHE_RAM_ATTR void keyIrq(void)
+{
+    if(digitalRead(0) == 0)
+    {
+        mWorkMode = TimeMode;
+        Serial.println("digitalRead low work mode = TimeWork");
+    }
+    else{
+        Serial.println("digitalRead high");
+
     }
 }
+
+
+//**************************************************************************************************
+
+void WiFiConnect(void)
+{
+
+    mWorkMode = AutoConnMode;
+    bConnectNoWait = true;
+
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, pass); // 默认连接保存的WIFI
+
+    clear_Display();
+    showText(tWifiTip, strlen(tWifiTip), 57, 0);
+    showText(tWifiReadyTip, strlen(tWifiReadyTip), 29, 0);
+    updatedisplay();
+
+    while(true)
+    {
+        if(mWorkMode == AutoConnMode)
+            autoConfig();
+        else if(mWorkMode == SmartConnMode)
+            smartConfig();
+        else
+            break;
+        yield();
+    }
+   
+}
+//**************************************************************************************************
 
 //**************************************************************************************************
 //
@@ -231,27 +335,17 @@ void timer50ms()
 void setup()
 {
     // Add your initialization code here
-    tm *tt;
     Serial.begin(115200);
     helpArr_init();
     matrixDisplayInit();
     rtc_init();
     clear_Display();
     tckr.attach(0.05, timer50ms); // every 50 msec
-    pinMode(0, INPUT);
-    //////////////////////////////////
-    if (!autoConfig())
-    {
-        smartConfig();
-    }
-    ///////////////////////////////////
-    tt = connectNTP();
-    if (tt != NULL)
-        rtc_set(tt);
-    else
-        Serial.println("no timepacket received");
+    tckr2.attach(1, TimeUpdate); // every 50 msec
 
-    clear_Display();
+    mWorkMode = InitMode;
+    pinMode(0, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(0), keyIrq, FALLING);
 }
 
 
@@ -260,8 +354,8 @@ void setup()
 void loop()
 {
     //Add your repeated code here
-    struct tm mPerviousTime;
-    struct tm mPresentTime;
+    char tDate[128] = {0};
+    tm *tt;
 
     signed int x = 0; //x1,x2;
     signed int y = 0, y1 = 0, y2 = 0, y3 = 0;
@@ -286,6 +380,29 @@ void loop()
         y2 = 8;
         y1 = -8;
     }
+ 
+    //////////////////////////////////
+    //connect net
+    WiFiConnect();
+    ///////////////////////////////////
+    if(mWorkMode == WiFiConnecdMode && (WiFi.status()== WL_CONNECTED))
+    {
+        tt = connectNTP();
+        if (tt != NULL)
+        {
+            rtc_set(tt);
+            Serial.println("NTP Time set to RTC");
+        }
+        else
+            Serial.println("no timepacket received");
+    }
+    if(mWorkMode == TimeMode)
+    {
+        clear_Display();
+        showText(tRTCTip, strlen(tRTCTip), 25, 0);
+        updatedisplay();
+    }
+
     while (true)
     {
         yield();
@@ -299,6 +416,7 @@ void loop()
         //修改逻辑200ms读取一次rtc时钟，判断秒数变化再做更新
         if (f_tckr1s == true) // flag 1sek
         {
+            f_tckr1s = false;
             rtc2mez(&mPresentTime);
 
             mVarietyType = 0;
@@ -330,7 +448,6 @@ void loop()
             }
 
             y = y2; //scroll updown
-            f_tckr1s = false;
 
             // if (mPresentTime.tm_sec == 45)
             //     f_scroll_x = true; //滚动开关
@@ -338,6 +455,7 @@ void loop()
         if (f_tckr50ms == true)
         {
             f_tckr50ms = false;
+            
             if (f_scroll_x == true)
             {
                 // z_PosX++;
@@ -352,7 +470,6 @@ void loop()
             }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
             char22Arr(48 + mPresentTime.tm_mday % 10, z_PosX - 59, 0);
             char22Arr(48 + mPresentTime.tm_mday / 10, z_PosX - 55, 0);
             char22Arr(48 + mPresentTime.tm_mon % 10, z_PosX - 51, 0);
@@ -361,6 +478,19 @@ void loop()
             char22Arr(48 + mPresentTime.tm_year / 10, z_PosX - 39, 0);
             char22Arr('0', z_PosX - 35, 0);
             char22Arr('2', z_PosX - 31, 0); //year
+            tDate[7] = 48 + mPresentTime.tm_mday % 10;
+            tDate[6] = 48 + mPresentTime.tm_mday / 10;
+            tDate[5] = 48 + mPresentTime.tm_mon % 10;
+            tDate[4] = 48 + mPresentTime.tm_mon / 10;
+            tDate[3] = 48 + mPresentTime.tm_year % 10;
+            tDate[2] = 48 + mPresentTime.tm_year / 10;
+            tDate[1] = '0';
+            tDate[0] = '2';
+            if(d_PosX  > 128)
+                d_PosX = 0;
+            else
+                d_PosX++;
+            // ScorllShowDate(tDate, 16, d_PosX, 0);
 
             // char2Arr(' ', d_PosX+5, 0);        //tm_mday of the week
             // char2Arr(WT_arr[MEZ.WT][0], d_PosX - 1, 0);        //tm_mday of the week

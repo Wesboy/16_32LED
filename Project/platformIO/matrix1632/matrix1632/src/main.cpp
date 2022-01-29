@@ -14,7 +14,7 @@ some show interface
 #include "matrixDisplay.h"
 #include "wfont.h"
 #include "wDS3231.h"
-// #include "wTicker.h"
+#include "wTicker.h"
 
 //char ssid[] = "chen159";                    // your network SSID (name)
 //char pass[] = "134802..chun";                    // your network password
@@ -65,37 +65,6 @@ char tRTCTip[] = "RTC!";
 
 struct tm mPerviousTime;
 struct tm mPresentTime;
-
-
-
-
-
-
-static unsigned int _sys_tick_count = 0;
-
-void wTick1ms(void)
-{
-	do
-	{
-		_sys_tick_count++;
-	} while (0 == _sys_tick_count);
-}
-
-
-unsigned int ReadUserTimer(unsigned int *Timer)
-{
-	return (_sys_tick_count - *Timer);
-}
-
-void ResetUserTimer(unsigned int *Timer)
-{
-	*Timer = _sys_tick_count;
-}
-
-void SetUserTimer(unsigned int *Timer, unsigned int T)
-{
-	*Timer = _sys_tick_count + T;
-}
 
 //**************************************************************************************************
   
@@ -352,6 +321,7 @@ void timeWork(void)
     static unsigned int f_scroll_x = false;
     static unsigned int iUpdateTime = 0;
     static unsigned int iWorkTime = 0;
+    static unsigned int iScorllTime = 3000; //3秒滚动一次
     
     //Add your repeated code herechar tDate[128] = {0};
     static char tDate[128] = {0};
@@ -433,42 +403,103 @@ void timeWork(void)
     {
         ResetUserTimer(&iWorkTime);
         
-        if (f_scroll_x == true)
-        {
-            // z_PosX++;
-            d_PosX++;
-            if (d_PosX == 101)
-                z_PosX = 0;
-            if (z_PosX == MAXPOSX)
-            {
-                f_scroll_x = false;
-                d_PosX = -8;
-            }
-        }
+        // if (f_scroll_x == true)
+        // {
+        //     // z_PosX++;
+        //     d_PosX++;
+        //     if (d_PosX == 101)
+        //         z_PosX = 0;
+        //     if (z_PosX == MAXPOSX)
+        //     {
+        //         f_scroll_x = false;
+        //         d_PosX = -8;
+        //     }
+        // }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        char22Arr(48 + mPresentTime.tm_mday % 10, z_PosX - 59, 0);
-        char22Arr(48 + mPresentTime.tm_mday / 10, z_PosX - 55, 0);
-        char22Arr(48 + mPresentTime.tm_mon % 10, z_PosX - 51, 0);
-        char22Arr(48 + mPresentTime.tm_mon / 10, z_PosX - 47, 0);
-        char22Arr(48 + mPresentTime.tm_year % 10, z_PosX - 43, 0);
-        char22Arr(48 + mPresentTime.tm_year / 10, z_PosX - 39, 0);
-        char22Arr('0', z_PosX - 35, 0);
-        char22Arr('2', z_PosX - 31, 0); //year
-        tDate[7] = 48 + mPresentTime.tm_mday % 10;
-        tDate[6] = 48 + mPresentTime.tm_mday / 10;
-        tDate[5] = 48 + mPresentTime.tm_mon % 10;
-        tDate[4] = 48 + mPresentTime.tm_mon / 10;
-        tDate[3] = 48 + mPresentTime.tm_year % 10;
-        tDate[2] = 48 + mPresentTime.tm_year / 10;
-        tDate[1] = '0';
-        tDate[0] = '2';
+
+        if(ReadUserTimer(&iScorllTime) > 10000)
+        {
+            ResetUserTimer(&iScorllTime);
+            f_scroll_x = true;
+        }
+
+        int pos = 4;
+        static int p = 0;
+        
+
+        if(f_scroll_x)
+        {
+            
+            // tDate[24] = ' ';     
+            // tDate[23] = 48 + mPresentTime.tm_mday % 10;
+            // tDate[22] = 48 + mPresentTime.tm_mday / 10;
+            // tDate[21] = 48 + mPresentTime.tm_mon % 10;
+            // tDate[20] = 48 + mPresentTime.tm_mon / 10;
+            // tDate[19] = 48 + mPresentTime.tm_year % 10;
+            // tDate[18] = 48 + mPresentTime.tm_year / 10;
+            // tDate[17] = '0';
+            // tDate[16] = '2';
+            tDate[15] = ' ';     
+            tDate[14] = ' ';     
+            tDate[13] = ' ';     
+            tDate[12] = WT_arr[mPresentTime.tm_wday][3];   
+            tDate[11] = WT_arr[mPresentTime.tm_wday][2];   
+            tDate[10] = WT_arr[mPresentTime.tm_wday][1];   
+            tDate[9] = WT_arr[mPresentTime.tm_wday][0];     
+            tDate[8] = ' ';     
+            tDate[7] = 48 + mPresentTime.tm_mday % 10;
+            tDate[6] = 48 + mPresentTime.tm_mday / 10;
+            tDate[5] = 48 + mPresentTime.tm_mon % 10;
+            tDate[4] = 48 + mPresentTime.tm_mon / 10;
+            tDate[3] = 48 + mPresentTime.tm_year % 10;
+            tDate[2] = 48 + mPresentTime.tm_year / 10;
+            tDate[1] = '0';
+            tDate[0] = '2';
+
+
+            if(p < 64)
+                p++;
+            else
+            {
+                p = 0;
+                f_scroll_x = false;
+                ResetUserTimer(&iScorllTime);
+            }
+            
+            for(int i = 15; i >= 0; i--)
+            { 
+                if(i < 9)
+                {
+                    pos = (32 - 4*i) + p;
+                }
+                else
+                    pos = (32 - 6*i) + p;
+                if(pos <= 32 && pos >= 0)
+                {
+                     if(i < 8)
+                        char22Arr(tDate[i], pos, 0);
+                    else
+                        char2Arr(tDate[i], pos, 0);
+                }
+            }
+        }
+        // char22Arr(48 + mPresentTime.tm_mday % 10, pos, 0);
+        // char22Arr(48 + mPresentTime.tm_mday / 10, pos, 0);
+        // char22Arr(48 + mPresentTime.tm_mon % 10, pos, 0);
+        // char22Arr(48 + mPresentTime.tm_mon / 10, pos, 0);
+        // char22Arr(48 + mPresentTime.tm_year % 10, pos, 0);
+        // char22Arr(48 + mPresentTime.tm_year / 10, pos, 0);
+        // char22Arr('0', pos , 0);
+        // char22Arr('2', pos, 0); //year
         if(d_PosX  > 128)
             d_PosX = 0;
         else
             d_PosX++;
-        // ScorllShowDate(tDate, 16, d_PosX, 0);
 
+
+
+        // ScorllShowDate(tDate, 16, d_PosX, 0, 2000);
         // char2Arr(' ', d_PosX+5, 0);        //tm_mday of the week
         // char2Arr(WT_arr[MEZ.WT][0], d_PosX - 1, 0);        //tm_mday of the week
         // char2Arr(WT_arr[MEZ.WT][1], d_PosX - 7, 0);

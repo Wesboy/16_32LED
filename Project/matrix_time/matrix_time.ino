@@ -5,6 +5,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
+#include <Wire.h>
 
 #include <Adafruit_NeoPixel.h>
 #ifdef __AVR__
@@ -13,10 +14,8 @@
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-char ssid[] = "chen159";                    // your network SSID (name)
-char pass[] = "134802..chun";                  // your network password
-//char ssid[] = "yougu150";                    // your network SSID (name)
-//char pass[] = "15012411251";                  // your network password
+ char ssid[] = "chen159";                    // your network SSID (name)
+ char pass[] = "134802..chun";                  // your network password
 unsigned int localPort = 2390;                      // local port to listen for UDP packets
 const char* ntpServerName = "ntp.ntsc.ac.cn";
 const int NTP_PACKET_SIZE = 48;                     // NTP time stamp is in the first 48 bytes of the message
@@ -27,14 +26,27 @@ unsigned long epoch = 0;
 const int timeZone = 8;
 uint8_t bUpdateNTP = 1;
 
+
 Ticker flipper;
 
+enum eMode{
+    InitMode,
+    AutoConnMode,
+    SmartConnMode,
+    WiFiConnecdMode,
+    TimeMode,
+    MaxMode,
+};
+
+static eMode mWorkMode = InitMode;             //
+static uint8_t bflushTime = 0;
+static uint8_t iTickerTime = 0;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
-#define PIN       D1 // On Trinket or Gemma, suggest changing this to 1
+#define PIN       15 // On Trinket or Gemma, suggest changing this to 1
 
 #define RGB_LINE_MAX 8
 #define RGB_ROW_MAX 32
@@ -88,6 +100,206 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 #define DELAYVAL 100 // Time (in milliseconds) to pause between pixels
 
+
+#define DS3231_ADDRESS 0X68
+#define SECONDREG 0X00
+#define MINUTEREG 0X01
+#define HOURREG 0X02
+#define WTREG 0X03 //WEEKDAY
+#define DATEREG 0X04
+#define MONTHREG 0X05
+#define YEARREG 0X06
+#define ALARM_MIN1SECREG 0X07
+#define ALARM_MIN1MINREG 0X08
+#define ALARM_MIN1HRREG 0X09
+#define ALARM_MIN1DATEREG 0X0A
+#define ALARM_MIN2MINREG 0X0B
+#define ALARM_MIN2HRREG 0X0C
+#define ALARM_MIN2DATEREG 0X0D
+#define CONTROLREG 0X0E
+#define STATUSREG 0X0F
+#define AGEOFFSETREG 0X10
+#define TEMPMSBREG 0X11
+#define TEMPLSBREG 0X12
+#define _24_HOUR_FORMAT 0
+#define _12_HOUR_FORMAT 1
+#define AM 0
+#define PM 1
+
+
+#define DS3231_SDA 5 // Pin sda (I2C)
+#define DS3231_SCL 4 // Pin scl (I2C)
+
+
+unsigned char rtc_Read(unsigned char regaddress);
+void rtc_Write(unsigned char regaddress, unsigned char value);
+
+
+//**************************************************************************************************
+void rtc_init(void)
+{
+    Wire.begin(DS3231_SDA, DS3231_SCL);
+    rtc_Write(CONTROLREG, 0x00);
+}
+//**************************************************************************************************
+// BCD Code
+//**************************************************************************************************
+static unsigned char dec2bcd(unsigned char x)
+{ //value 0...99
+    unsigned char z, e, r;
+    e = x % 10;
+    z = x / 10;
+    z = z << 4;
+    r = e | z;
+    return (r);
+}
+
+static unsigned char bcd2dec(unsigned char x)
+{ //value 0...99
+    int z, e;
+    e = x & 0x0F;
+    z = x & 0xF0;
+    z = z >> 4;
+    z = z * 10;
+    return (z + e);
+}
+//**************************************************************************************************
+// RTC I2C Code
+//**************************************************************************************************
+unsigned char rtc_Read(unsigned char regaddress)
+{
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(regaddress);
+    Wire.endTransmission();
+    Wire.requestFrom((unsigned char)DS3231_ADDRESS, (unsigned char)1);
+    return (Wire.read());
+}
+void rtc_Write(unsigned char regaddress, unsigned char value)
+{
+    Wire.beginTransmission(DS3231_ADDRESS);
+    Wire.write(regaddress);
+    Wire.write(value);
+    Wire.endTransmission();
+}
+//**************************************************************************************************
+unsigned char rtc_second()
+{
+    return (bcd2dec(rtc_Read(SECONDREG)));
+}
+unsigned char rtc_minute()
+{
+    return (bcd2dec(rtc_Read(MINUTEREG)));
+}
+unsigned char rtc_stunde()
+{
+    return (bcd2dec(rtc_Read(HOURREG)));
+}
+unsigned char rtc_wochentag()
+{
+    return (bcd2dec(rtc_Read(WTREG)));
+}
+unsigned char rtc_tag()
+{
+    return (bcd2dec(rtc_Read(DATEREG)));
+}
+unsigned char rtc_monat()
+{
+    return (bcd2dec(rtc_Read(MONTHREG)));
+}
+unsigned char rtc_jahr()
+{
+    return (bcd2dec(rtc_Read(YEARREG)));
+}
+void rtc_second(unsigned char sek)
+{
+    rtc_Write(SECONDREG, (dec2bcd(sek)));
+}
+void rtc_minute(unsigned char min)
+{
+    rtc_Write(MINUTEREG, (dec2bcd(min)));
+}
+void rtc_stunde(unsigned char std)
+{
+    rtc_Write(HOURREG, (dec2bcd(std)));
+}
+void rtc_wochentag(unsigned char wt)
+{
+    rtc_Write(WTREG, (dec2bcd(wt)));
+}
+void rtc_tag(unsigned char tag)
+{
+    rtc_Write(DATEREG, (dec2bcd(tag)));
+}
+void rtc_monat(unsigned char mon)
+{
+    rtc_Write(MONTHREG, (dec2bcd(mon)));
+}
+void rtc_jahr(unsigned char jahr)
+{
+    rtc_Write(YEARREG, (dec2bcd(jahr)));
+}
+//**************************************************************************************************
+void rtc_set(tm *tt)
+{
+    rtc_second((unsigned char)tt->tm_sec);
+    rtc_minute((unsigned char)tt->tm_min);
+    rtc_stunde((unsigned char)tt->tm_hour);
+    rtc_tag((unsigned char)tt->tm_mday);
+    rtc_monat((unsigned char)tt->tm_mon + 1);
+    rtc_jahr((unsigned char)tt->tm_year - 100);
+    if (tt->tm_wday == 0)
+    {
+        rtc_wochentag(7);
+    }
+    else
+        rtc_wochentag((unsigned char)tt->tm_wday);
+}
+//**************************************************************************************************
+float rtc_temp()
+{
+    float t = 0.0;
+    unsigned char lowByte = 0;
+    signed char highByte = 0;
+    
+    lowByte = rtc_Read(TEMPLSBREG);
+    highByte = rtc_Read(TEMPMSBREG);
+    lowByte >>= 6;
+    lowByte &= 0x03;
+    t = ((float)lowByte);
+    t *= 0.25;
+    t += highByte;
+    return (t); // return temp value
+}
+//**************************************************************************************************
+void rtc2mez(tm *getTime)
+{
+    unsigned short Jahr, Tag, Monat, WoTag, Stunde, Minute, Sekunde;
+
+    getTime->tm_year = rtc_jahr(); //年
+    if (getTime->tm_year > 99)
+        getTime->tm_year = 0;
+    getTime->tm_mon = rtc_monat(); //月
+    if (getTime->tm_mon > 12)
+        getTime->tm_mon = 0;
+    getTime->tm_mday = rtc_tag(); //天
+    if (getTime->tm_mday > 31)
+        getTime->tm_mday = 0;
+    getTime->tm_wday = rtc_wochentag(); //So=0, Mo=1, Di=2 ...
+    if (getTime->tm_wday == 7)
+        getTime->tm_wday = 0;
+    getTime->tm_hour = rtc_stunde(); //小时
+    if (getTime->tm_hour > 23)
+        getTime->tm_hour = 0;
+    getTime->tm_min = rtc_minute(); //分钟
+    if (getTime->tm_min > 59)
+        getTime->tm_min = 0;
+    getTime->tm_sec = rtc_second(); //秒
+    if (getTime->tm_sec > 59)
+        getTime->tm_sec = 0;
+
+}
+
+
 /**
  * 
  * line ： 具体行
@@ -105,7 +317,7 @@ int setRGB(uint32_t line, uint32_t row, uint32_t colorVal, int iLight)
     //计算具体在哪个像素点
     //0 15-16 31-32 47-48 63-64 79-80 95-96 111-112 127-128 133-134 149-150 165-166 181-196 211-212 227-228 243-244 
     //1 14-17 30-33
-    // if(line == 0)
+//    if(line == 0)
     {
         if(row%2)
         {
@@ -129,7 +341,6 @@ int flushRGB(void)
   pixels.clear(); // Set all pixel colors to 'off'
   for(i = 0; i < NUMPIXELS; i++)
   {
-    pixels.setBrightness(10);
     pixels.setPixelColor(i, pixels.Color(rgbvalue[i]>>16, (rgbvalue[i]>>8)&0xFF, rgbvalue[i]&0xFF));
   }
   pixels.show();   // Send the updated pixel colors to the hardware.
@@ -152,31 +363,51 @@ void timeInit(void)
 
 
 void flip() {
-  if(mTime.second >= 59)
-  {
-      mTime.second = 0;
-      if(mTime.minute >= 59)
-      {
-          mTime.minute = 0;
-          if(mTime.hour >= 23)
-          {
-              bUpdateNTP = 1;
-              mTime.hour = 0;
-          }
-          else
-          {
-              mTime.hour++;
-          }
-      }
-      else
-      {
-          mTime.minute++;
-      }
-  }
-  else
-  {
-      mTime.second++;
+
+    
+    struct tm mPresentTime;
+
+    
+    rtc2mez(&mPresentTime);
+    mTime.second = mPresentTime.tm_sec;
+    mTime.minute = mPresentTime.tm_min;
+    mTime.hour = mPresentTime.tm_hour;
+    mTime.day = mPresentTime.tm_mday;
+    mTime.month = mPresentTime.tm_mon;
+    mTime.year_h = mPresentTime.tm_year>>8;
+    mTime.year_l = mPresentTime.tm_year&&0xFF;
+    bflushTime = 1;
+    if(mWorkMode == WiFiConnecdMode)
+    {
+        iTickerTime++;
     }
+    
+
+//   if(mTime.second >= 59)
+//   {
+//       mTime.second = 0;
+//       if(mTime.minute >= 59)
+//       {
+//           mTime.minute = 0;
+//           if(mTime.hour >= 23)
+//           {
+//               bUpdateNTP = 1;
+//               mTime.hour = 0;
+//           }
+//           else
+//           {
+//               mTime.hour++;
+//           }
+//       }
+//       else
+//       {
+//           mTime.minute++;
+//       }
+//   }
+//   else
+//   {
+//       mTime.second++;
+//     }
 }
 
 void timeHandle(void)
@@ -196,10 +427,17 @@ void timeHandle(void)
       CurSecond = mTime.second;
      }
      
-//  Serial.println(CurSecond);
-//  Serial.println(mTime.second);
-//  Serial.println(CurSecDisplay);
-//  
+    Serial.print(mTime.hour);
+    Serial.print(":");
+    Serial.print(mTime.minute);
+    Serial.print(":");
+    Serial.println(mTime.second);
+ 
+
+    if (mTime.hour == 0 && mTime.minute == 40 && mTime.second == 0) //syncronisize RTC every tm_mday 00:20:00
+    {
+        ESP.restart();
+    }
 
     if(CurSecDisplay < 10)
     {
@@ -211,7 +449,7 @@ void timeHandle(void)
           lineval |= Matrix_5_7_Num[mTime.hour%10][7-line]<<22;
           lineval |= Matrix_5_7_Num[mTime.minute/10][7-line]<<14;
           lineval |= Matrix_5_7_Num[mTime.minute%10][7-line]<<9;
-          PixColor = 0xFF;
+          PixColor = 0xC638;
   
           if(line == 1 || line == 2 || line == 4 || line == 5)
           {
@@ -222,7 +460,7 @@ void timeHandle(void)
             
               lineval |= Matrix_3_5_Num[mTime.second/10][4 - line] << 5;
               lineval |= Matrix_3_5_Num[mTime.second%10][4 - line] << 1;
-              PixColor = 0xFF;
+              PixColor = 0xC638;
           }
           
           for(i = 0; i < 32; i++)
@@ -260,18 +498,18 @@ void timeHandle(void)
           lineval |= (Matrix_3_5_Num[mTime.month%10][4 - line] << 8);
           lineval |= (Matrix_3_5_Num[mTime.day/10][4 - line] << 4);
           lineval |= (Matrix_3_5_Num[mTime.day%10][4 - line] << 0);
-          PixColor = 0xFF00;
+          PixColor = 0xA678;
         }
   
        for(i = 0; i < 32; i++) 
         {
             if((lineval >> i) &0x1)
             {
-              setRGB(line,i, PixColor, 200);
+                setRGB(line,i, PixColor, 200);
             }
             else
             {
-               setRGB(line,i, 0x0, 200);
+                setRGB(line,i, 0x0, 200);
             }
         }
       }
@@ -325,19 +563,26 @@ tm* connectNTP() { //if response from NTP was succesfull return *tm else return 
     udp.endPacket();
     delay(1000);                 // wait to see if a reply is available
     int cb = udp.parsePacket();
-    udp.read(packetBuffer, NTP_PACKET_SIZE); // read the packet into the buffer
-    //the timestamp starts at byte 40 of the received packet and is four bytes,
-    // or two words, long. First, esxtract the two words:
-    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
-    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
-    // combine the four bytes (two words) into a long integer
-    // this is NTP time (seconds since Jan 1 1900):
-    unsigned long secsSince1900 = highWord << 16 | lowWord;
-    // now convert NTP time into everyday time:
-    const unsigned long seventyYears = 2208988800UL;
-    // subtract seventy years:
-    epoch = secsSince1900 - seventyYears + 3600*timeZone + 2; //+2000ms Verarbeitungszeit
-    //epoch=epoch-3600*6; // difference -6h = -6* 3600 sec)
+    if (!cb) {
+    //解析包为空
+      Serial.println("no any data!");
+    } else {
+      Serial.print("data len");
+      Serial.println(cb);
+      udp.read(packetBuffer, NTP_PACKET_SIZE); // read the packet into the buffer
+      //the timestamp starts at byte 40 of the received packet and is four bytes,
+      // or two words, long. First, esxtract the two words:
+      unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+      unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+      // combine the four bytes (two words) into a long integer
+      // this is NTP time (seconds since Jan 1 1900):
+      unsigned long secsSince1900 = highWord << 16 | lowWord;
+      // now convert NTP time into everyday time:
+      const unsigned long seventyYears = 2208988800UL;
+      // subtract seventy years:
+      epoch = secsSince1900 - seventyYears + 3600*timeZone + 2; //+2000ms Verarbeitungszeit
+      //epoch=epoch-3600*6; // difference -6h = -6* 3600 sec)
+    }
     time_t t;
     t = epoch;
     tm* ltt;
@@ -351,53 +596,82 @@ tm* connectNTP() { //if response from NTP was succesfull return *tm else return 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
-  Serial.begin(115200);
-  pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
-  connect_to_WiFi();
-  flipper.attach(1, flip);
-  timeInit();
-  bUpdateNTP = 1;
+    Serial.begin(115200);
+    pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
+    pixels.setBrightness(10);
+    flipper.attach_ms(200, flip);
+    rtc_init();
+    timeInit();
+    mWorkMode = InitMode;
+    bUpdateNTP = 1;
 }
 
 char bfirst = 0;
 
 void loop() {
-  timeHandle();
 
-  if(bUpdateNTP)
-  {
-    if(tt == NULL)
-      tt = connectNTP();
-    if(tt)
+    while (true)
     {
-      bUpdateNTP = 0;
-      mTime.second = tt->tm_sec;
-      mTime.minute = tt->tm_min;
-      mTime.hour = tt->tm_hour;
-      Serial.print("time: ");
-      Serial.println(tt->tm_hour);
-      Serial.println(tt->tm_min);
-      Serial.println(tt->tm_sec);
-      
-      mTime.year_h = (tt->tm_year+1900)/100;
-      mTime.year_l = (tt->tm_year+1900)%100;
-      mTime.month = tt->tm_mon;
-      mTime.day = tt->tm_mday;
-      Serial.print("date: ");
-      Serial.println(tt->tm_year);
-      Serial.println(tt->tm_mon);
-      Serial.println(tt->tm_mday);
-      tt = NULL;
+        switch (mWorkMode)
+        {
+        case InitMode:
+            //////////////////////////////////
+            //connect net
+            connect_to_WiFi();
+            mWorkMode = WiFiConnecdMode;
+            iTickerTime = 0;
+            ///////////////////////////////////
+            break;
+        case AutoConnMode:
+            // autoConfig();
+            break;
+        case SmartConnMode:
+            // smartConfig();
+            break;
+        case WiFiConnecdMode:
+            if(WiFi.status()== WL_CONNECTED)
+            {
+                tm *tt;
+                tt = connectNTP();
+                if (tt != NULL)
+                {
+                    rtc_set(tt);
+                    mWorkMode = TimeMode;
+                    Serial.println("NTP Time set to RTC");
+                }
+                else if(iTickerTime > 100) //超过10s
+                {
+                    iTickerTime = 0;
+                    Serial.println("no timepacket received into time");
+                    mWorkMode = TimeMode;
+                }
+                else
+                {
+                    
+                    Serial.print("no timepacket received：");
+                    Serial.println(iTickerTime);
+                }
+            }
+            else if(iTickerTime > 100) //超过10s
+            {
+                iTickerTime = 0;
+                Serial.println("no wifi not connect time out!!");
+                mWorkMode = TimeMode;
+            }
+            break;
 
-    }
-  }
-//  pixels.clear(); // Set all pixel colors to 'off'
-//
-//  for(int i=0; i<NUMPIXELS; i++) { // For each pixel...
-////    pixels.clear();
-//    pixels.setPixelColor(i, pixels.Color(255, 0, 0));
-//
-//  }
-//  pixels.show();   // Send the updated pixel colors to the hardware.
-  delay(DELAYVAL); // Pause before next pass through loop
+        case TimeMode:
+            if(bflushTime == 1)
+            {
+                bflushTime = 0; 
+                timeHandle();
+            }   
+        
+        default:
+            break;
+        }
+        
+        yield();
+    } //end while(true)
+
 }
